@@ -385,6 +385,7 @@ if __name__ == "__main__":
                                                       )
         print("Writing results of test to %s" % "%s/%s" % (output_dir, args.xgb_test_output))
         results_df.to_csv("%s/%s" % (output_dir, args.xgb_test_output), index=False)
+
         no_results_df = pd.DataFrame(no_results)
         no_results_df.to_csv("%s/%s.no_results" % (output_dir, args.xgb_test_output), index=False)
         print("Meta:\nModel name: %s, Store Name: %s, Index: %s, Precision: %s \n" % (

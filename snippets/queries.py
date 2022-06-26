@@ -1,5 +1,7 @@
 """
 pyenv activate search_with_ml
+
+open /workspace/ltr_output/ltr_model_importance.png
 """
 import json
 import sys

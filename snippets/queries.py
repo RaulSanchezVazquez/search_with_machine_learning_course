@@ -2,6 +2,8 @@
 pyenv activate search_with_ml
 
 open /workspace/ltr_output/ltr_model_importance.png
+
+python week1/utilities/build_ltr.py --xgb_test /workspace/ltr_output/test.csv --train_file /workspace/ltr_output/train.csv --output_dir /workspace/ltr_output --xgb_test_num_queries 100 --xgb_main_query 0 --xgb_rescore_query_weight 2 && python week1/utilities/build_ltr.py --analyze --output_dir /workspace/ltr_output
 """
 import json
 import sys

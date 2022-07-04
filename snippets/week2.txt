@@ -1,0 +1,59 @@
+pyenv activate search_with_ml
+
+mkdir /workspace/week2
+export DATA_PATH=/workspace/datasets/fasttext/shuffled_labeled_products.txt
+export TRAIN_PATH=/workspace/week2/train.txt
+export TEST_PATH=/workspace/week2/test.txt
+export TRAIN_NORM_PATH=/workspace/week2/train_norm.txt
+export TEST_NORM_PATH=/workspace/week2/test_norm.txt
+export MODEL_PATH=/workspace/week2/model.bin
+
+python week2/createContentTrainingData.py --output /workspace/datasets/fasttext/labeled_products.txt
+shuf /workspace/datasets/fasttext/labeled_products.txt > $DATA_PATH
+
+head --lines 10000 $DATA_PATH > $TRAIN_PATH
+tail --lines 10000 $DATA_PATH > $TEST_PATH
+
+~/fastText-0.9.2/fasttext supervised -input $TRAIN_PATH -output $MODEL_PATH
+
+~/fastText-0.9.2/fasttext test $MODEL_PATH.bin $TEST_PATH
+
+# Normalization
+cat $TRAIN_PATH | sed -e "s/\([.\!?,'/()]\)/ \1 /g" | tr "[:upper:]" "[:lower:]" | sed "s/[^[:alnum:]_]/ /g" | tr -s ' ' > $TRAIN_NORM_PATH
+cat $TEST_PATH | sed -e "s/\([.\!?,'/()]\)/ \1 /g" | tr "[:upper:]" "[:lower:]" | sed "s/[^[:alnum:]_]/ /g" | tr -s ' ' > $TEST_NORM_PATH
+
+~/fastText-0.9.2/fasttext supervised -lr 1.0 -epoch 25 -input $TRAIN_NORM_PATH -output $MODEL_PATH
+~/fastText-0.9.2/fasttext test $MODEL_PATH.bin $TEST_NORM_PATH
+
+# Subset of target labels
+export PRUNED_DATA=/workspace/datasets/fasttext/pruned_labeled_products.txt
+export TRAIN_PRUNED_DATA=/workspace/week2/train_pruned.txt
+export TEST_PRUNED_DATA=/workspace/week2/test_pruned.txt
+export TRAIN_PRUNED_DATA_NORM=/workspace/week2/train_pruned_norm.txt
+export TEST_PRUNED_DATA_NORM=/workspace/week2/test_pruned_norm.txt
+
+python snippets/prune_label_products.py
+
+cat $TRAIN_PRUNED_DATA | sed -e "s/\([.\!?,'/()]\)/ \1 /g" | tr "[:upper:]" "[:lower:]" | sed "s/[^[:alnum:]_]/ /g" | tr -s ' ' > $TRAIN_PRUNED_DATA_NORM
+cat $TEST_PRUNED_DATA | sed -e "s/\([.\!?,'/()]\)/ \1 /g" | tr "[:upper:]" "[:lower:]" | sed "s/[^[:alnum:]_]/ /g" | tr -s ' ' > $TEST_PRUNED_DATA_NORM
+
+~/fastText-0.9.2/fasttext supervised -lr 1.0 -epoch 25 -input $TRAIN_PRUNED_DATA_NORM -output $MODEL_PATH
+~/fastText-0.9.2/fasttext test $MODEL_PATH.bin $TEST_PRUNED_DATA_NORM
+
+
+# LEVEL 2
+export DATA_TITLES=/workspace/datasets/fasttext/titles.txt
+cut -d' ' -f2- /workspace/datasets/fasttext/shuffled_labeled_products.txt > $DATA_TITLES
+
+~/fastText-0.9.2/fasttext skipgram -input /workspace/datasets/fasttext/titles.txt -output /workspace/datasets/fasttext/title_model
+
+cat /workspace/datasets/fasttext/titles.txt | sed -e "s/\([.\!?,'/()]\)/ \1 /g" | tr "[:upper:]" "[:lower:]" | sed "s/[^[:alnum:]]/ /g" | tr -s ' ' > /workspace/datasets/fasttext/normalized_titles.txt
+~/fastText-0.9.2/fasttext skipgram -minCount 20 -input /workspace/datasets/fasttext/normalized_titles.txt -output /workspace/datasets/fasttext/title_model
+~/fastText-0.9.2/fasttext nn /workspace/datasets/fasttext/title_model.bin
+
+
+# LEVEL 3
+
+cat /workspace/datasets/fasttext/normalized_titles.txt | tr " " "\n" | grep "...." | sort | uniq -c | sort -nr | head -1000 | grep -oE '[^ ]+$' > /workspace/datasets/fasttext/top_words.txt
+
+./index-data.sh -r -p /workspace/search_with_machine_learning_course/week2/conf/bbuy_products.json

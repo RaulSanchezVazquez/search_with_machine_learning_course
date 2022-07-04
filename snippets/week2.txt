@@ -53,7 +53,10 @@ cat /workspace/datasets/fasttext/titles.txt | sed -e "s/\([.\!?,'/()]\)/ \1 /g" 
 
 
 # LEVEL 3
-
 cat /workspace/datasets/fasttext/normalized_titles.txt | tr " " "\n" | grep "...." | sort | uniq -c | sort -nr | head -1000 | grep -oE '[^ ]+$' > /workspace/datasets/fasttext/top_words.txt
+docker cp /workspace/datasets/fasttext/synonyms.csv opensearch-node1:/usr/share/opensearch/config/synonyms.csv
 
-./index-data.sh -r -p /workspace/search_with_machine_learning_course/week2/conf/bbuy_products.json
+curl -k -X DELETE -u admin  "https://localhost:9200/bbuy_products"
+curl -k -X PUT -u admin  "https://localhost:9200/bbuy_products" -H 'Content-Type: application/json' -d "@/workspace/search_with_machine_learning_course/week2/conf/bbuy_products.json"
+
+python utilities/index_products.py -s "/workspace/datasets/product_data/products"

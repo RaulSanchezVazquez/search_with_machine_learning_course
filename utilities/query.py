@@ -186,11 +186,138 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
     return query_obj
 
 
+import fasttext
+import string
+import unidecode
+from nltk.stem.snowball import SnowballStemmer
+
+_MODEL = fasttext.load_model('/workspace/datasets/model.bin')
+
+def str_lower_rm_punctuation_rm_accents(text):
+    """
+    String cleaning:
+        - Lower Case
+        - Remove Accents
+        - Remove Symbols
+
+    Parameters
+    ----------
+    text : str
+        String to clean
+
+    Returns
+    -------
+
+    text_clean : str
+        cleant string
+
+    Examples
+    --------
+
+    ::
+
+        x = 'Hola! Como estás?'
+        str_lower_rm_punctuation_rm_accents(x)
+
+        Out:
+            'hola como estas'
+
+        x = '汉字'
+        x_ = str_lower_rm_punctuation_rm_accents(x)
+        print(x_)
+
+        Out:
+            yi zi
+
+    """
+
+    if len(text) == 0:
+        return ''
+
+    # Puctuations to remove
+    table = str.maketrans({
+        key: None
+        for key in string.punctuation
+    })
+
+    # Make sure to have a string
+    text_cleant = str(text)
+
+    # Remove Symbols
+    text_cleant = text_cleant.translate(table)
+
+    # Remove accents
+    text_cleant = unidecode.unidecode(text_cleant)
+
+    # Lower
+    text_cleant = text_cleant.lower()
+
+    return str(text_cleant)
+    
+
+def apply_stemmer(sentence):
+    """
+    """
+    snowball = SnowballStemmer(language="english")
+
+    sentence = str_lower_rm_punctuation_rm_accents(sentence)
+    sentence = [
+        snowball.stem(word)
+        for word in sentence.split(' ')]
+
+    sentence = ' '.join(sentence)
+
+    return sentence
+
+
+def predict_proba(user_query):
+    import pandas as pd
+
+    user_query = apply_stemmer(user_query)
+
+    labels, scores = _MODEL.predict(user_query)
+
+    y_scores = pd.Series(scores, labels).sort_values(ascending=False)
+
+    y_scores.index = [x.replace('__label__', '') for x in y_scores.index]
+
+    return y_scores
+
+
 def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc"):
+    """
+    """
     #### W3: classify the query
     #### W3: create filters and boosts
     # Note: you may also want to modify the `create_query` method above
-    query_obj = create_query(user_query, click_prior_query=None, filters=None, sort=sort, sortDir=sortDir, source=["name", "shortDescription"])
+
+    MIN_TH = .5
+    y_scores = predict_proba(user_query)
+    y_scores = y_scores[y_scores > MIN_TH]
+
+    filters = []
+    for category_id, score in y_scores.to_dict().items():
+        filters = [
+            {
+                "terms": {
+                    "categoryPathIds.keyword": [category_id]
+                }
+            }
+        ]
+
+    if len(filters) == 0:
+        filters = None
+
+    print(filters)
+
+    query_obj = create_query(
+        user_query, 
+        click_prior_query=None, 
+        filters=None, 
+        sort='_score', 
+        sortDir=sortDir, 
+        source=["name", "shortDescription"])
+
     logging.info(query_obj)
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:

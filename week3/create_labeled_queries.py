@@ -180,7 +180,7 @@ def replace_categ(cat):
 
     return cat
 
-min_th = 1000
+min_th = 10000
 
 df['category_'] = df['category'].copy()
 for _ in range(10):
@@ -191,7 +191,7 @@ for _ in range(10):
     if categs_below_min_th.shape[0] == 0:
         break
     df['category_'] = df['category_'].apply(replace_categ)
-
+df['category_'].nunique()
 # Remov double spaces
 import re
 

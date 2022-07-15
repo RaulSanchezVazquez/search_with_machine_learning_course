@@ -8,5 +8,5 @@ shuf $DATA_PATH > $DATA_PATH_SHUF
 head --lines 10000 $DATA_PATH > $TRAIN_PATH
 tail --lines 10000 $DATA_PATH > $TEST_PATH
 
-~/fastText-0.9.2/fasttext supervised -lr 0.3 -epoch 25 -input $TRAIN_PATH -output $MODEL_PATH
+~/fastText-0.9.2/fasttext supervised -lr 0.3 -epoch 50 -input $TRAIN_PATH -output $MODEL_PATH
 ~/fastText-0.9.2/fasttext test $MODEL_PATH.bin $TEST_PATH

@@ -1,6 +1,12 @@
 """
 pyenv activate search_with_ml
 
+./delete-indexes.sh
+
+
+./index-data.sh -r -p /workspace/search_with_machine_learning_course/week4/conf/bbuy_products.json
+
+
 python index_products.py $REDUCE -s "$DATASETS_DIR/product_data/products"
 open /workspace/ltr_output/ltr_model_importance.png
 

@@ -12,6 +12,27 @@ import pandas as pd
 import fileinput
 import logging
 
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+def create_vector_query(query, size=10):
+    """
+    """
+    query_emb = model.encode([query])[0]
+    
+    query_obj = {
+        'size': size,
+        "query": {
+            "knn": {
+                "name_emb": {
+                    "vector": query_emb,
+                    "k": size
+                }
+            }
+        }
+    }   
+
+    return query_obj
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -284,7 +305,7 @@ def predict_proba(user_query):
     return y_scores
 
 
-def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc"):
+def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc", vector_flag=True):
     """
     """
     #### W3: classify the query
@@ -308,21 +329,25 @@ def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc")
     if len(filters) == 0:
         filters = None
 
-    print(filters)
-
-    query_obj = create_query(
-        user_query, 
-        click_prior_query=None, 
-        filters=None, 
-        sort='_score', 
-        sortDir=sortDir, 
-        source=["name", "shortDescription"])
+    if vector_flag:
+        query_obj = create_vector_query(query, size=100)
+        # print(query_obj)
+    else:
+        query_obj = create_query(
+            user_query, 
+            click_prior_query=None, 
+            filters=None, 
+            sort='_score', 
+            sortDir=sortDir, 
+            source=["name", "shortDescription"])
 
     logging.info(query_obj)
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
         hits = response['hits']['hits']
         print(json.dumps(response, indent=2))
+    else:
+        print('No hits :(')
 
 
 if __name__ == "__main__":
